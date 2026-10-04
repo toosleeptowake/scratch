@@ -1,0 +1,10 @@
+
+certs:
+  templates: {}
+  root: {}
+  intermediate: {}
+  leaf: {}
+mock:
+  serviceA:
+    client:
+    server:

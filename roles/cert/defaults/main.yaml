@@ -1,0 +1,47 @@
+# It would be good to be able to include ca in template
+
+
+certs:
+  templates:
+    template_1:
+      template1_key1: "one"
+    template_2:
+      template2_key2: "two"
+    user_template:
+      user_template_key: "I am a value"
+    mock_template:
+      mock_templatekey: "I am a mock template"
+  root:
+    internal:
+      template: template_2
+      v:
+        name: "Internal root CA"
+        filename: internal.p12
+        password: "myinternalpass"
+    another:
+      template: template_2
+  intermediate:
+    orga:
+      ca: internal
+      template: template_1
+      v:
+        name: "Intermediate root ca"
+        filename: intermediate.p12
+        password: "myintermediatepass"
+  leaf:
+    clientA:
+      ca: internal
+      template: user_template
+      v:
+        name: "I am a user with name clientA"
+    clientB:
+      ca: orga
+      template: user_template
+      v:
+        name: "I am a user with name clientB"
+mock:
+  serviceA:
+    cert_template: mock_template
+    client:
+    server:
+      sans: http://this.com

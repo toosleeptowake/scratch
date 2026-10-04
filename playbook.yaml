@@ -1,0 +1,5 @@
+---
+- name: Top playbook
+  hosts: localhost
+  roles:
+    - cert

@@ -1,0 +1,150 @@
+---
+- name: Sign of life
+  ansible.builtin.debug:
+    msg: "{{ certs }}"
+
+
+# Some asserts
+- name: Verify Roots 
+  ansible.builtin.assert:
+    that:
+      - certs.root[item].v is defined
+    fail_msg: "cert root '{{item}}' is required to have a v member
+    "
+  loop: "{{ certs.root.keys() }}"
+#  vars:
+#  when: resolved_roots 
+#        | ansible.builtin.dict2items 
+#        | selectattr('key', 'in', certs.leaf[item].ca) 
+#        | length > 0
+
+
+
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_roots: {}
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_roots: "{{ resolved_roots | combine( { item: merged_keys } ) }}"
+  loop: "{{ certs.root.keys() }}"
+  vars:
+    template: "{{ (
+        certs.templates 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.root[item].template) 
+        | first 
+        ).value }}"
+    merged_keys: "{{
+      certs.root[item].v 
+      | combine( template, recursive=True )
+    }}"
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_intermediate: {}
+
+# Resolve intermediates
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_intermediate: "{{ resolved_intermediate| combine( { item: merged_keys } ) }}"
+  loop: "{{ certs.intermediate.keys() }}"
+  vars:
+    template: "{{ (
+        certs.templates 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.intermediate[item].template) 
+        | first 
+        ).value }}"
+    resolved_ca: "{{ (
+        resolved_roots 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.intermediate[item].ca) 
+        | first 
+        ).value }}"
+
+    merged_keys: "{{
+      certs.intermediate[item].v 
+      | combine( template, recursive=True )
+      | combine( { 'ca' : resolved_ca })
+    }}"
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_leaf: {}
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_leaf: "{{ resolved_leaf| combine( { item: merged_keys } ) }}"
+  loop: "{{ certs.leaf.keys() }}"
+  vars:
+    template: "{{ (
+        certs.templates 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].template) 
+        | first 
+        ).value }}"
+    resolved_ca: "{{ (
+        resolved_roots 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].ca) 
+        | first 
+        ).value }}"
+
+    merged_keys: "{{
+      certs.leaf[item].v 
+      | combine( template, recursive=True )
+      | combine( { 'ca' : resolved_ca })
+    }}"
+  when: resolved_roots 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].ca) 
+        | length > 0
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_leaf: "{{ resolved_leaf| combine( { item: merged_keys } ) }}"
+  loop: "{{ certs.leaf.keys() }}"
+  vars:
+    template: "{{ (
+        certs.templates 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].template) 
+        | first 
+        ).value }}"
+    resolved_ca: "{{ (
+        resolved_intermediate 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].ca) 
+        | first 
+        ).value }}"
+
+    merged_keys: "{{
+      certs.leaf[item].v 
+      | combine( template, recursive=True )
+      | combine( { 'ca' : resolved_ca })
+    }}"
+  when: resolved_intermediate 
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].ca) 
+        | length > 0
+
+- name: Sign of life
+  ansible.builtin.debug:
+    msg: "{{ resolved_roots }}"
+
+- name: Sign of life
+  ansible.builtin.debug:
+    msg: "{{ resolved_intermediate }}"
+
+- name: Sign of life
+  ansible.builtin.debug:
+    msg: "{{ resolved_leaf }}"
+
+- name: Sign of life
+  ansible.builtin.debug:
+    msg: "{{ (certs.templates | ansible.builtin.dict2items | selectattr('key', 'in', 'template_2') | first ).value }}"
+  vars:
+    item: internal
+
