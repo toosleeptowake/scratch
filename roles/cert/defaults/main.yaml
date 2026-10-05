@@ -19,10 +19,11 @@ certs:
         filename: internal.p12
         password: "myinternalpass"
     another:
+      v: {}
       template: template_2
   intermediate:
     orga:
-      ca: internal
+      ca: internal1
       template: template_1
       v:
         name: "Intermediate root ca"
@@ -44,4 +45,5 @@ mock:
     cert_template: mock_template
     client:
     server:
-      sans: http://this.com
+      sans:
+        - http://this.com

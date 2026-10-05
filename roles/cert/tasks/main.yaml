@@ -4,20 +4,104 @@
     msg: "{{ certs }}"
 
 
-# Some asserts
+# Some asserts for root ca's
+# 1. Must have v child defined
+# 2. Must have template child defined
+# 3. template child node must refer to valid template name
 - name: Verify Roots 
   ansible.builtin.assert:
     that:
-      - certs.root[item].v is defined
-    fail_msg: "cert root '{{item}}' is required to have a v member
+      - v_defined_str
+      - template_defined_str
+      - template_resolved
+    fail_msg: "cert root '{{item}}' failed checks 
+        [{{v_defined_str}}] v defined
+        [{{template_defined_str}}] template defined
+        [{{template_resolved}}] resolved
     "
+    success_msg: "cert root '{{item}}' passed checks 
+        [{{v_defined_str}}] v defined
+        [{{template_defined_str}}] template defined
+        [{{template_resolved}}] resolved
+    "
+  vars:
+    v_defined_str: "{{(certs.root[item].v is defined) | bool }}"
+    template_defined_str: "{{ (certs.root[item].template is defined) | bool }}"
+    template_resolved: "{{(certs.templates
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.root[item].template) 
+        | length > 0) | bool }}"
   loop: "{{ certs.root.keys() }}"
-#  vars:
-#  when: resolved_roots 
-#        | ansible.builtin.dict2items 
-#        | selectattr('key', 'in', certs.leaf[item].ca) 
-#        | length > 0
 
+# Some asserts for intermediate ca's
+# 1. Must have v child defined
+# 2. Must have template child defined
+# 3. template child node must refer to valid template name
+# 4. Must have ca child defined
+# 5. ca child node must refer to valid root name
+- name: Verify Intermediates
+  ansible.builtin.assert:
+    that:
+      - v_defined
+      - ca_defined
+      - ca_present
+      - template_defined
+      - template_resolved
+    fail_msg: "cert intermediate '{{item}}'
+        v_defined[{{v_defined}}]
+        ca_defined[{{ca_defined}}]
+        ca_present[{{ca_present}}]
+        template_defined[{{template_defined}}]
+        tempate_resolved[{{template_resolved}}]
+    "
+    success_msg: "BOOD {{ ca_present }}"
+  loop: "{{ certs.intermediate.keys() }}"
+  vars:
+    v_defined: "{{ (certs.intermediate[item].v is defined) | bool }}"
+    ca_defined: "{{ (certs.intermediate[item].ca is defined) | bool }}"
+    ca_present: "{{ (certs.root
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.intermediate[item].ca) 
+        | length > 0) | bool }}"
+    template_defined: "{{ (certs.intermediate[item].template is defined) | bool }}"
+    template_resolved: "{{(certs.templates
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.intermediate[item].template) 
+        | length > 0) | bool }}"
+
+- name: Verify Leaf
+  ansible.builtin.assert:
+    that:
+      - v_defined
+      - ca_defined
+      - ca_present or intermediate_present
+      - template_defined
+      - template_resolved
+    fail_msg: "cert leaf '{{item}}'
+        v_defined[{{v_defined}}]
+        ca_defined[{{ca_defined}}]
+        ca_present[{{ca_present}}]
+        template_defined[{{template_defined}}]
+        tempate_resolved[{{template_resolved}}]
+    "
+    success_msg: "BOOD {{ ca_present }}"
+  loop: "{{ certs.leaf.keys() }}"
+  vars:
+    v_defined: "{{ (certs.leaf[item].v is defined) | bool }}"
+    ca_defined: "{{ (certs.leaf[item].ca is defined) | bool }}"
+    ca_present: "{{ (certs.root
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].ca) 
+        | length > 0) | bool }}"
+    intermediate_present: "{{ (certs.intermediate
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].ca) 
+        | length > 0) | bool }}"
+    template_defined: "{{ (certs.leaf[item].template is defined) | bool }}"
+    template_resolved: "{{(certs.templates
+        | ansible.builtin.dict2items 
+        | selectattr('key', 'in', certs.leaf[item].template) 
+        | length > 0) | bool }}"
 
 
 
@@ -142,9 +226,23 @@
   ansible.builtin.debug:
     msg: "{{ resolved_leaf }}"
 
+
+- name: Sign of life
+  ansible.builtin.set_fact:
+    resolved_leaf: "{{ resolved_leaf| combine(
+    {
+      item: {
+        'template': 'mock_template',
+        'ca': 'mock_ca',
+        'v': {
+          'name': 'Generated MOCK ' ~ item,
+          'sans': mock[item].server.sans
+        }
+      }
+    } ) }}"
+  loop: "{{ mock.keys() }}"
+
 - name: Sign of life
   ansible.builtin.debug:
-    msg: "{{ (certs.templates | ansible.builtin.dict2items | selectattr('key', 'in', 'template_2') | first ).value }}"
-  vars:
-    item: internal
+    msg: "{{ resolved_leaf }}"
 
