@@ -47,6 +47,7 @@ mock:
     server:
       sans:
         - http://this.com
+
   serviceB:
     cert_template: mock_template
     client:

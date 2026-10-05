@@ -1,0 +1,39 @@
+- name: Generate Self-Signed Root CA
+  block:
+    - name: Ensure target directory exists for CA files
+      ansible.builtin.file:
+        path: ./ssl
+        state: directory
+        mode: '0700'
+
+    - name: 1. Generate CA Private Key (RSA 4096)
+      community.crypto.openssl_privatekey:
+        path: ./ssl/rootCA.key
+        size: 4096
+        type: RSA
+        mode: '0600'
+
+    - name: 2. Generate Certificate Signing Request (CSR) for Root CA
+      community.crypto.openssl_csr_pipe:
+        privatekey_path: ./ssl/rootCA.key
+        common_name: "My Internal Root CA"
+        use_common_name_for_san: false
+        basic_constraints:
+          - 'CA:TRUE'
+        basic_constraints_critical: true
+        key_usage:
+          - keyCertSign
+          - cRLSign
+        key_usage_critical: true
+      register: ca_csr
+
+    - name: 3. Generate Self-Signed Root CA Certificate from CSR
+      community.crypto.x509_certificate:
+        path: ./ssl/rootCA.crt
+        csr_content: "{{ ca_csr.csr }}"
+        privatekey_path: ./ssl/rootCA.key
+        provider: selfsigned
+        selfsigned_not_after: "+3650d" # Valid for 10 years
+        mode: '0644'
+
+  delegate_to: localhost
