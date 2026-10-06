@@ -20,7 +20,10 @@ certs:
         filename: internal.p12
         password: "myinternalpass"
     another:
-      v: {}
+      v:
+        filename: another.p12
+        password: "myinternalpass"
+
       template: template_2
   intermediate:
     orga:
@@ -29,6 +32,13 @@ certs:
       v:
         name: "Intermediate root ca"
         filename: intermediate.p12
+        password: "myintermediatepass"
+    orgb:
+      ca: internal1
+      template: template_1
+      v:
+        name: "Intermediate root ca 2"
+        filename: intermediate2.p12
         password: "myintermediatepass"
   leaf:
     clientA:

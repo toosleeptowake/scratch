@@ -241,8 +241,8 @@
     {
       item: {
         'config': {
-            'filename': item,
-            'password': '1234567',
+            'filename': resolved_roots[item].filename,
+            'password': resolved_roots[item].password,
             'alias': item,
             'common_name': resolved_roots[item].name
         }
@@ -257,3 +257,30 @@
     config: "{{ ca_work_config[item].values() }}"
   loop: "{{ ca_work_config.keys() }}"
 #-----------------------------------------------------------
+#
+- name: Sign of life | CA WORK
+  ansible.builtin.set_fact:
+    intermediate_work_config: "{{ intermediate_work_config | default({}) | combine(
+    {
+      item: {
+        'config': {
+            'filename': resolved_intermediate[item].filename,
+            'password': resolved_intermediate[item].password,
+            'common_name': resolved_intermediate[item].name,
+            'ca': resolved_intermediate[item].ca
+        }
+      }
+    } ) }}"
+  loop: "{{ resolved_intermediate.keys() }}"
+
+
+- name: Sign of life
+  ansible.builtin.debug:
+    msg: "{{ intermediate_work_config }}"
+
+- name: Do Intermediates
+  ansible.builtin.include_role:
+    name: intermediate 
+  vars:
+    config: "{{ intermediate_work_config[item].values() }}"
+  loop: "{{ intermediate_work_config.keys() }}"

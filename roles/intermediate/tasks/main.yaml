@@ -1,0 +1,54 @@
+- name: Ensure certificate directory exists
+  ansible.builtin.file:
+    path: "{{ merged_config.outputDir }}"
+    state: directory
+    mode: '0755'
+
+- name: 1. Generate Intermediate Private Key
+  community.crypto.openssl_privatekey:
+    path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+    type: RSA
+    size: 4096
+    mode: '0600'
+
+- name: 2. Create Certificate Signing Request (CSR) for Intermediate CA
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+    common_name: "{{ merged_config.common_name }}"
+    organization_name: "My Company"
+    country_name: "AU"
+    # Crucial for intermediate CAs: KeyCertSign and cRLSign usage are required
+    key_usage:
+      - keyCertSign
+      - cRLSign
+      - digitalSignature
+    key_usage_critical: true
+    # Basic Constraints must explicitly define this as a CA
+    basic_constraints:
+      - "CA:TRUE"
+      - "pathlen:0"  # pathlen:0 means this intermediate cannot sign *other* intermediates, only end-entity certs
+    basic_constraints_critical: true
+  register: intermediate_csr_result
+
+- name: 3. Sign the Intermediate CSR with the Root CA
+  community.crypto.x509_certificate:
+    path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.crt"
+    csr_content: "{{ intermediate_csr_result.csr }}"
+    provider: ownca
+    # Root CA configuration
+    #ownca_path: "{{ root_ca_cert }}"
+    #ownca_privatekey_path: "{{ root_ca_key }}"
+    #ownca_privatekey_passphrase: "{{ root_ca_passphrase | default(omit) }}"
+    ownca_path: "{{ merged_config.outputDir }}/{{merged_config.ca.filename}}.crt"
+    ownca_privatekey_path: "{{ merged_config.outputDir }}/{{merged_config.ca.filename}}.key"
+    ownca_privatekey_passphrase: "{{ merged_config.ca.password }}"
+
+    # Validity period (e.g., 5 years)
+    ownca_not_after: "+1825d"
+    # Must replicate CA extensions from CSR into the signed certificate
+    ownca_create_subject_key_identifier: always_create
+#    ownca_extensions_restrictions:
+#      - basic_constraints
+#      - key_usage
+    mode: '0644'
+

@@ -14,6 +14,7 @@
     - name: 1. Generate CA Private Key (RSA 4096)
       community.crypto.openssl_privatekey:
         path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+        passphrase: "{{ merged_config.password }}"
         size: 4096
         type: RSA
         mode: '0600'
@@ -21,6 +22,7 @@
     - name: 2. Generate Certificate Signing Request (CSR) for Root CA
       community.crypto.openssl_csr_pipe:
         privatekey_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+        privatekey_passphrase: "{{ merged_config.password }}"
         common_name: "{{ merged_config.common_name }}"
         use_common_name_for_san: false
         basic_constraints:
@@ -37,6 +39,7 @@
         path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.crt"
         csr_content: "{{ ca_csr.csr }}"
         privatekey_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+        privatekey_passphrase: "{{ merged_config.password }}"
         provider: selfsigned
         selfsigned_not_after: "+3650d" # Valid for 10 years
         mode: '0644'
@@ -55,10 +58,11 @@
 
     - name: 4. Pack Private Key and Certificate into a P12 Archive
       community.crypto.openssl_pkcs12:
-        path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.p12"
+        path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}"
         action: export
         certificate_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.crt"
         privatekey_path: "{{ merged_config.outputDir }}//{{ merged_config.filename}}.key"
+        privatekey_passphrase: "{{ merged_config.password }}"
         passphrase: "{{ merged_config.password }}"
         friendly_name: "{{ merged_config.alias }}"
         state: present
