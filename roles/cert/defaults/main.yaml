@@ -10,8 +10,10 @@ certs:
       template2_key2: "two"
     user_template:
       user_template_key: "I am a value"
+      password: "user_password"
     mock_template:
       mock_templatekey: "I am a mock template"
+      password: "mock_password"
   root:
     internal:
       template: template_2
@@ -46,11 +48,13 @@ certs:
       template: user_template
       v:
         name: "I am a user with name clientA"
+        filename: clientA.p12
     clientB:
       ca: orga
       template: user_template
       v:
         name: "I am a user with name clientB"
+        filename: clientB.p12
 mock:
   serviceA:
     cert_template: mock_template
