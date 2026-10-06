@@ -1,0 +1,6 @@
+default_config:
+  outputDir: ./ssl
+  filename: Unknown
+  common_name: "My Internal CA"
+
+merged_config: "{{ default_config | combine(config | default({}), recursive=True) }}"

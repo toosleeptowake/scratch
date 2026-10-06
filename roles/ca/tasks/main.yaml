@@ -1,22 +1,27 @@
+- name: Set Role Fact
+  ansible.builtin.set_fact:
+    _merged_config: "{{ merged_config }}"
+
+
 - name: Generate Self-Signed Root CA
   block:
     - name: Ensure target directory exists for CA files
       ansible.builtin.file:
-        path: ./ssl
+        path: "{{ merged_config.outputDir }}"
         state: directory
         mode: '0700'
 
     - name: 1. Generate CA Private Key (RSA 4096)
       community.crypto.openssl_privatekey:
-        path: ./ssl/rootCA.key
+        path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
         size: 4096
         type: RSA
         mode: '0600'
 
     - name: 2. Generate Certificate Signing Request (CSR) for Root CA
       community.crypto.openssl_csr_pipe:
-        privatekey_path: ./ssl/rootCA.key
-        common_name: "My Internal Root CA"
+        privatekey_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+        common_name: "{{ merged_config.common_name }}"
         use_common_name_for_san: false
         basic_constraints:
           - 'CA:TRUE'
@@ -29,11 +34,33 @@
 
     - name: 3. Generate Self-Signed Root CA Certificate from CSR
       community.crypto.x509_certificate:
-        path: ./ssl/rootCA.crt
+        path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.crt"
         csr_content: "{{ ca_csr.csr }}"
-        privatekey_path: ./ssl/rootCA.key
+        privatekey_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
         provider: selfsigned
         selfsigned_not_after: "+3650d" # Valid for 10 years
         mode: '0644'
+
+    - name: dump cfg
+      ansible.builtin.debug:
+        msg: "{{ config }}"
+
+    - name: dump cfg
+      ansible.builtin.debug:
+        msg: "{{ merged_config }}"
+
+    - name: dump cfg
+      ansible.builtin.debug:
+        msg: "{{ _merged_config }}"
+
+    - name: 4. Pack Private Key and Certificate into a P12 Archive
+      community.crypto.openssl_pkcs12:
+        path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.p12"
+        action: export
+        certificate_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.crt"
+        privatekey_path: "{{ merged_config.outputDir }}//{{ merged_config.filename}}.key"
+        passphrase: "{{ merged_config.password }}"
+        friendly_name: "{{ merged_config.alias }}"
+        state: present
 
   delegate_to: localhost

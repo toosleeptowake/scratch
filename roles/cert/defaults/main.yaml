@@ -6,6 +6,7 @@ certs:
     template_1:
       template1_key1: "one"
     template_2:
+      name: "template_2 name"
       template2_key2: "two"
     user_template:
       user_template_key: "I am a value"

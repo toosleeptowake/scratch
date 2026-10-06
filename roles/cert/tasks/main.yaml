@@ -103,15 +103,9 @@
         | selectattr('key', 'in', certs.leaf[item].template) 
         | length > 0) | bool }}"
 
-
-
 - name: Sign of life
   ansible.builtin.set_fact:
-    resolved_roots: {}
-
-- name: Sign of life
-  ansible.builtin.set_fact:
-    resolved_roots: "{{ resolved_roots | combine( { item: merged_keys } ) }}"
+    resolved_roots: "{{ resolved_roots | default({}) | combine( { item: merged_keys } ) }}"
   loop: "{{ certs.root.keys() }}"
   vars:
     template: "{{ (
@@ -121,18 +115,14 @@
         | first 
         ).value }}"
     merged_keys: "{{
-      certs.root[item].v 
-      | combine( template, recursive=True )
+      template
+      | combine( certs.root[item].v, recursive=True )
     }}"
-
-- name: Sign of life
-  ansible.builtin.set_fact:
-    resolved_intermediate: {}
 
 # Resolve intermediates
 - name: Sign of life
   ansible.builtin.set_fact:
-    resolved_intermediate: "{{ resolved_intermediate| combine( { item: merged_keys } ) }}"
+    resolved_intermediate: "{{ resolved_intermediate | default({}) | combine( { item: merged_keys } ) }}"
   loop: "{{ certs.intermediate.keys() }}"
   vars:
     template: "{{ (
@@ -147,20 +137,15 @@
         | selectattr('key', 'in', certs.intermediate[item].ca) 
         | first 
         ).value }}"
-
     merged_keys: "{{
-      certs.intermediate[item].v 
-      | combine( template, recursive=True )
+      template
+      | combine( certs.intermediate[item].v, recursive=True )
       | combine( { 'ca' : resolved_ca })
     }}"
 
 - name: Sign of life
   ansible.builtin.set_fact:
-    resolved_leaf: {}
-
-- name: Sign of life
-  ansible.builtin.set_fact:
-    resolved_leaf: "{{ resolved_leaf| combine( { item: merged_keys } ) }}"
+    resolved_leaf: "{{ resolved_leaf | default({}) | combine( { item: merged_keys } ) }}"
   loop: "{{ certs.leaf.keys() }}"
   vars:
     template: "{{ (
@@ -175,10 +160,9 @@
         | selectattr('key', 'in', certs.leaf[item].ca) 
         | first 
         ).value }}"
-
     merged_keys: "{{
-      certs.leaf[item].v 
-      | combine( template, recursive=True )
+      template
+      | combine( certs.leaf[item].v , recursive=True )
       | combine( { 'ca' : resolved_ca })
     }}"
   when: resolved_roots 
@@ -203,10 +187,9 @@
         | selectattr('key', 'in', certs.leaf[item].ca) 
         | first 
         ).value }}"
-
     merged_keys: "{{
-      certs.leaf[item].v 
-      | combine( template, recursive=True )
+      template
+      | combine( certs.leaf[item].v, recursive=True )
       | combine( { 'ca' : resolved_ca })
     }}"
   when: resolved_intermediate 
@@ -214,17 +197,23 @@
         | selectattr('key', 'in', certs.leaf[item].ca) 
         | length > 0
 
-- name: Sign of life
-  ansible.builtin.debug:
-    msg: "{{ resolved_roots }}"
+#- name: Sign of life - Resolved Roots
+#  ansible.builtin.debug:
+#    msg: "{{ resolved_roots }}"
 
-- name: Sign of life
-  ansible.builtin.debug:
-    msg: "{{ resolved_intermediate }}"
+#- name: X
+#  ansible.builtin.fail:
+#    msg: "End"
+#  when:
+#    - True
 
-- name: Sign of life
-  ansible.builtin.debug:
-    msg: "{{ resolved_leaf }}"
+#- name: Sign of life
+#  ansible.builtin.debug:
+#    msg: "{{ resolved_intermediate }}"
+
+#- name: Sign of life
+#  ansible.builtin.debug:
+#    msg: "{{ resolved_leaf }}"
 
 
 - name: Sign of life
@@ -241,8 +230,30 @@
       }
     } ) }}"
   loop: "{{ mock.keys() }}"
-
 - name: Sign of life
   ansible.builtin.debug:
     msg: "{{ resolved_leaf }}"
 
+#----------------- Build CA work list and execute ----------
+- name: Sign of life | CA WORK
+  ansible.builtin.set_fact:
+    ca_work_config: "{{ ca_work_config | default({}) | combine(
+    {
+      item: {
+        'config': {
+            'filename': item,
+            'password': '1234567',
+            'alias': item,
+            'common_name': resolved_roots[item].name
+        }
+      }
+    } ) }}"
+  loop: "{{ resolved_roots.keys() }}"
+
+- name: Do CA
+  ansible.builtin.include_role:
+    name: ca
+  vars:
+    config: "{{ ca_work_config[item].values() }}"
+  loop: "{{ ca_work_config.keys() }}"
+#-----------------------------------------------------------
