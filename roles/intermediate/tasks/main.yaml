@@ -7,6 +7,7 @@
 - name: 1. Generate Intermediate Private Key
   community.crypto.openssl_privatekey:
     path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+    passphrase: "{{ merged_config.password }}"
     type: RSA
     size: 4096
     mode: '0600'
@@ -14,6 +15,7 @@
 - name: 2. Create Certificate Signing Request (CSR) for Intermediate CA
   community.crypto.openssl_csr_pipe:
     privatekey_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.key"
+    privatekey_passphrase: "{{ merged_config.password }}"
     common_name: "{{ merged_config.common_name }}"
     organization_name: "My Company"
     country_name: "AU"
@@ -52,3 +54,13 @@
 #      - key_usage
     mode: '0644'
 
+- name: 4. Pack Private Key and Certificate into a P12 Archive
+  community.crypto.openssl_pkcs12:
+    path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}"
+    action: export
+    certificate_path: "{{ merged_config.outputDir }}/{{ merged_config.filename}}.crt"
+    privatekey_path: "{{ merged_config.outputDir }}//{{ merged_config.filename}}.key"
+    privatekey_passphrase: "{{ merged_config.password }}"
+    passphrase: "{{ merged_config.password }}"
+    friendly_name: "{{ merged_config.alias }}"
+    state: present

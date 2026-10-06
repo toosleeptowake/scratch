@@ -258,7 +258,7 @@
   loop: "{{ ca_work_config.keys() }}"
 #-----------------------------------------------------------
 #
-- name: Sign of life | CA WORK
+- name: Sign of life | INTERMEDIATE WORK
   ansible.builtin.set_fact:
     intermediate_work_config: "{{ intermediate_work_config | default({}) | combine(
     {
@@ -267,6 +267,7 @@
             'filename': resolved_intermediate[item].filename,
             'password': resolved_intermediate[item].password,
             'common_name': resolved_intermediate[item].name,
+            'alias': item,
             'ca': resolved_intermediate[item].ca
         }
       }
